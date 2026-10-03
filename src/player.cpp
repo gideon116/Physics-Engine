@@ -53,6 +53,18 @@ void Player::updatePos()
     updateVel();
 }
 
+void Player::updatePoints()
+{
+    m_points_world.clear();
+    for (int i = 0; i < m_points_local.size(); i++)
+    {
+        sf::Vector2f& point = m_points_local[i];
+        float new_x = point.x * std::cos(m_angle) - point.y * std::sin(m_angle) + m_pos.x;
+        float new_y = point.x * std::sin(m_angle) + point.y * std::cos(m_angle) + m_pos.y;
+        m_points_world.push_back({new_x, new_y});
+    }
+}
+
 const Position Player::getPos() const
 {
     return m_pos;

@@ -73,29 +73,22 @@ public:
     const std::string* getName() const;
 
     void setPos(Position new_pos);
-
-    void updatePoints()
-    {
-        m_points_world.clear();
-        for (int i = 0; i < m_points_local.size(); i++)
-        {
-            sf::Vector2f& point = m_points_local[i];
-            float new_x = point.x * std::cos(m_angle) - point.y * std::sin(m_angle) + m_pos.x;
-            float new_y = point.x * std::sin(m_angle) + point.y * std::cos(m_angle) + m_pos.y;
-            m_points_world.push_back({new_x, new_y});
-        }
-    }
+    void updatePoints();
 
     std::vector<sf::Vector2f> &getPoints()
     {
         updatePoints();
         return m_points_world;
     }
+
     void draw(sf::RenderWindow &window)
     {
         sf::ConvexShape m_shape;
         m_shape.setPointCount(5);
         updatePoints();
+
+        float Pi = 3.14159265358979323846264338327950288419716939937510;
+        m_angle += Pi / 32;
 
         for (int i = 0; i < m_points_world.size(); i++)
         {
@@ -120,6 +113,7 @@ private:
     std::string* m_name = nullptr;
     Position m_pos = {0, 0};
     Vector m_acc = {0, 0};
+    Vector m_ang_acc = {0, 0};
     Vector m_vel = {0, 0};
     std::chrono::steady_clock::time_point m_time;
     float m_dt = 0;

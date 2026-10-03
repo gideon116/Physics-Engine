@@ -8,9 +8,37 @@ float Pi = 3.14159265358979323846264338327950288419716939937510;
 struct Collision
 {
     sf::Vector2f normal;
+    sf::Vector2f contact;
     float overlap;
     bool collide = false;
 };
+
+sf::Vector2f getContactPoints(const std::vector<sf::Vector2f>& A_vertices, const std::vector<sf::Vector2f>& B_vertices)
+{
+    sf::Vector2f contact;
+    float min_dist = 1e6;
+    for (const auto& c : A_vertices)
+    {
+        for (int i = 0; i < B_vertices.size(); i++)
+        {
+            sf::Vector2f p1 = B_vertices[i], p2 = B_vertices[(i + 1) % B_vertices.size()];
+            sf::Vector2f v = {p2.x - p1.x, p2.y - p1.y};
+            sf::Vector2f w = {c.x - p1.x, c.y - p1.y};
+
+            float t = (w.x * v.x + w.y * v.y) / (v.x * v.x + v.y * v.y);
+            sf::Vector2f w_p = {v.x * t, v.y * t};
+            sf::Vector2f w_t = {w.x - w_p.x, w.y - w_p.y};
+            float d = std::sqrt(w_t.x * w_t.x + w_t.y * w_t.y);
+            if (d < min_dist)
+            {
+                min_dist = d;
+                contact = c;
+            }
+        }
+    }
+    return contact;
+}
+
 
 std::vector<sf::Vector2f> getAxis(const std::vector<sf::Vector2f>& vertices)
 {
@@ -47,7 +75,7 @@ Collision checkOverlap(Player& A, Player& B)
     std::vector<sf::Vector2f> axis_1 = getAxis(A_vertices);
     std::vector<sf::Vector2f> axis_2 = getAxis(B_vertices);
 
-    Collision c = {{}, 1e9, false};
+    Collision c = {{}, {}, 1e9, false};
 
     for (int i = 0; i < A_vertices.size(); i++)
     {
@@ -94,6 +122,7 @@ Collision checkOverlap(Player& A, Player& B)
         }
     }
     c.collide = true;
+    c.contact = getContactPoints(A_vertices, B_vertices);
     return c;
 }
 
@@ -156,7 +185,6 @@ void inBounds(Player& A, const float boundRight,
 {
 
     std::vector<sf::Vector2f> &points = A.getPoints();
-    
 
     for (const auto& point : points)
     {
@@ -288,10 +316,7 @@ int main()
             }
 
             std::cout << c.collide << "\n";
-
-            // float axis = checkCollision(sBob, sPat, sBobS, sPatS);
-            // if (axis)
-            //     collide(sBob, sPat, sBobS, sPatS);
+            std::cout << c.contact.x << " " << c.contact.y << "\n";
         }
 
         sBob.draw(window);
