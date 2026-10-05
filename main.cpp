@@ -2,7 +2,6 @@
 #include "player.h"
 #include <SFML/Graphics.hpp>
 
-float Pi = 3.14159265358979323846264338327950288419716939937510;
 
 
 struct Collision
@@ -13,7 +12,8 @@ struct Collision
     bool collide = false;
 };
 
-sf::Vector2f getContactPoints(const std::vector<sf::Vector2f>& A_vertices, const std::vector<sf::Vector2f>& B_vertices)
+sf::Vector2f getContactPoints(
+    const std::vector<sf::Vector2f>& A_vertices,  const std::vector<sf::Vector2f>& B_vertices)
 {
     sf::Vector2f contact;
     float min_dist = 1e6;
@@ -47,7 +47,8 @@ std::vector<sf::Vector2f> getAxis(const std::vector<sf::Vector2f>& vertices)
     for (int i = 0; i < vertices.size(); i++)
     {
         int next_i = (i == vertices.size() - 1) ? 0 : i + 1;
-        sf::Vector2f edge = {vertices[i].y - vertices[next_i].y, - (vertices[i].x - vertices[next_i].x)};
+        sf::Vector2f edge = {
+            vertices[i].y - vertices[next_i].y, - (vertices[i].x - vertices[next_i].x)};
         axis.push_back(edge / std::sqrt(edge.x * edge.x + edge.y * edge.y));
     }
     return axis;
@@ -130,10 +131,10 @@ void elasticCollision(Player& A, Player& B)
 {
     float m_a = A.getMass();
     float m_b = B.getMass();
-    float v_a1_x = A.getVel().x();
-    float v_b1_x = B.getVel().x();
-    float v_a1_y = A.getVel().y();
-    float v_b1_y = B.getVel().y();
+    float v_a1_x = A.getVel().x;
+    float v_b1_x = B.getVel().x;
+    float v_a1_y = A.getVel().y;
+    float v_b1_y = B.getVel().y;
 
     float v_a2_x = ((m_a - m_b) * v_a1_x + 2 * m_b * v_b1_x) / (m_a + m_b);
     float v_b2_x = (2 * m_a * v_a1_x + (m_b - m_a) * v_b1_x) / (m_a + m_b);
@@ -149,10 +150,10 @@ void semiElasticCollision(Player& A, Player& B, float e = 0.9)
 {
     float m_a = A.getMass();
     float m_b = B.getMass();
-    float v_a1_x = A.getVel().x();
-    float v_b1_x = B.getVel().x();
-    float v_a1_y = A.getVel().y();
-    float v_b1_y = B.getVel().y();
+    float v_a1_x = A.getVel().x;
+    float v_b1_x = B.getVel().x;
+    float v_a1_y = A.getVel().y;
+    float v_b1_y = B.getVel().y;
 
     float dx = B.getPos().x - A.getPos().x + 400 - 25;
     float dy = B.getPos().y - A.getPos().y + 25 - 25;
@@ -167,7 +168,8 @@ void semiElasticCollision(Player& A, Player& B, float e = 0.9)
     float v_a2_n = (m_a * v_a1_n + m_b * v_b1_n + m_b * e * (v_b1_n - v_a1_n)) / (m_a + m_b);
     float v_b2_n = (m_a * v_a1_n + m_b * v_b1_n + m_a * e * (v_a1_n - v_b1_n)) / (m_a + m_b);
 
-    float dKE = -0.5 * (1 - std::pow(e, 2)) * std::pow((v_a1_n - v_b1_n), 2) * m_a * m_b / (m_a + m_b);
+    float dKE = -0.5 * (1 - std::pow(e, 2)) *
+                std::pow((v_a1_n - v_b1_n), 2) * m_a * m_b / (m_a + m_b);
     // do somthing with dKE
 
     float v_a2_x = v_a1_x + (v_a2_n - v_a1_n) * nx;
@@ -192,25 +194,25 @@ void inBounds(Player& A, const float boundRight,
         if (diff > 0)
         {
             A.setPos({(A.getPos().x - diff), A.getPos().y});
-            A.updateVel(-A.getVel().x() * e, A.getVel().y());
+            A.updateVel(-A.getVel().x * e, A.getVel().y);
         }
         diff = boundLeft - point.x;
         if (diff > 0)
         {
             A.setPos({(A.getPos().x + diff), A.getPos().y});
-            A.updateVel(-A.getVel().x() * e, A.getVel().y());
+            A.updateVel(-A.getVel().x * e, A.getVel().y);
         }
         diff = boundTop - point.y;
         if (diff > 0)
         {
             A.setPos({A.getPos().x, (A.getPos().y + diff)});
-            A.updateVel(A.getVel().x(), -A.getVel().y() * e);
+            A.updateVel(A.getVel().x, -A.getVel().y * e);
         }
         diff = point.y - boundBottom;
         if (diff > 0)
         {
             A.setPos({A.getPos().x, (A.getPos().y - diff)});
-            A.updateVel(A.getVel().x(), -A.getVel().y() * e);
+            A.updateVel(A.getVel().x, -A.getVel().y * e);
 
             // friction
             // sBob.pulse(Pi + sBob.getVel().angle, frictionCoe * gravity * sBob.getDt());
@@ -303,16 +305,29 @@ int main()
                 float norm_sBob_mass = c.overlap * inv_sBob_mass / inv_comb_mass;
                 float norm_sPat_mass = c.overlap * inv_sPat_mass / inv_comb_mass;
 
-                sBob.setPos({sBob.getPos().x - (c.normal.x * norm_sBob_mass), sBob.getPos().y - (c.normal.y * norm_sBob_mass)});
-                sPat.setPos({sPat.getPos().x - (c.normal.x * norm_sBob_mass), sPat.getPos().y - (c.normal.y * norm_sPat_mass)});
+                sBob.setPos({
+                    sBob.getPos().x - (c.normal.x * norm_sBob_mass),
+                    sBob.getPos().y - (c.normal.y * norm_sBob_mass)});
+                sPat.setPos({
+                    sPat.getPos().x - (c.normal.x * norm_sBob_mass),
+                    sPat.getPos().y - (c.normal.y * norm_sPat_mass)});
 
-                float mag = (sPat.getVel().x() - sBob.getVel().x()) * c.normal.x + (sPat.getVel().y() - sBob.getVel().y()) * c.normal.y;
-                if (mag < 0)
+                float mag = (sPat.getVel().x - sBob.getVel().x) * c.normal.x +
+                            (sPat.getVel().y - sBob.getVel().y) * c.normal.y;
+
+                if (mag < 0) // > 0 would mean they are already seperating
                 {
-                    sf::Vector2f impulse = {-(1 + e) * mag / (inv_comb_mass) * c.normal.x, -(1 + e) * mag / (inv_comb_mass) * c.normal.y};
-                    sBob.updateVel(-impulse.x * inv_sBob_mass, -impulse.y * inv_sBob_mass);
-                    sPat.updateVel(impulse.x * inv_sPat_mass, impulse.y * inv_sPat_mass);
+                    Vector impulse = Vector::fromCart(
+                        -(1 + e) * mag / (inv_comb_mass) * c.normal.x,
+                        -(1 + e) * mag / (inv_comb_mass) * c.normal.y
+                    );
+                    sBob.pulse(Vector::fromCart(-impulse.x, -impulse.y));
+                    sPat.pulse(impulse);
                 }
+
+                // r_OB = c.contact - sBob.centroid
+                // r_OB_p = -r.y, r.x
+                // v_B = w * r_OB_p
             }
 
             std::cout << c.collide << "\n";

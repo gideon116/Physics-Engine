@@ -2,23 +2,25 @@
 #include <cmath>
 
 
-
 void Player::sustainedForce(const float angle, const float force)
 {
-    Vector da = {force / m_mass, angle};
-    float ax = m_acc.x() + da.x();
-    float ay = m_acc.y() + da.y();
-    m_acc.mag = std::sqrt(std::pow(ax, 2) + std::pow(ay, 2));
-    m_acc.angle = std::atan2(ay, ax);
+    Vector da = Vector::fromPol(force / m_mass, angle);
+    float ax = m_acc.x + da.x;
+    float ay = m_acc.y + da.y;
+    m_acc.cartUpdate(ax, ay);
 }
 
-void Player::pulse(const float angle, const float impulse)
+void Player::pulse(const float angle, const float mag)
 {
-    Vector dv = {impulse / m_mass, angle};
-    float vx = m_vel.x() + dv.x();
-    float vy = m_vel.y() + dv.y();
-    m_vel.mag = std::sqrt(std::pow(vx, 2) + std::pow(vy, 2));
-    m_vel.angle = std::atan2(vy, vx);
+    Vector dv = Vector::fromPol(mag / m_mass, angle);
+    float vx = m_vel.x + dv.x;
+    float vy = m_vel.y + dv.y;
+    m_vel.cartUpdate(vx, vy);
+}
+
+void Player::pulse(const Vector impulse)
+{
+    m_vel.polUpdate(impulse.mag / m_mass, impulse.angle);
 }
 
 void Player::updateTime()
@@ -28,33 +30,28 @@ void Player::updateTime()
     m_time = curr_time;
 }
 
-void Player::updateVel()
+void Player::updateVel() // this just applies acceleration
 {
-    float vx = m_vel.x() + m_acc.x() * m_dt;
-    float vy = m_vel.y() + m_acc.y() * m_dt;
-    m_vel.mag = std::sqrt(std::pow(vx, 2) + std::pow(vy, 2));
-    m_vel.angle = std::atan2(vy, vx);
-}
+    // apply linear acceleration
+    float vx = m_vel.x + m_acc.x * m_dt;
+    float vy = m_vel.y + m_acc.y * m_dt;
+    m_vel.cartUpdate(vx, vy);
 
-void Player::updateVel(const float vx, const float vy)
-{
-    m_vel.mag = std::sqrt(std::pow(vx, 2) + std::pow(vy, 2));
-    m_vel.angle = std::atan2(vy, vx);
+    // apply angular acceleration
 }
-
 
 void Player::updatePos()
 {
     updateTime();
-    
-    m_pos.x += m_vel.x() * m_dt + 0.5 * m_acc.x() * m_dt * m_dt;
-    m_pos.y += m_vel.y() * m_dt + 0.5 * m_acc.y() * m_dt * m_dt;
 
-    updateVel();
-}
+    m_pos.x += m_vel.x * m_dt + 0.5 * m_acc.x * m_dt * m_dt;
+    m_pos.y += m_vel.y * m_dt + 0.5 * m_acc.y * m_dt * m_dt;
 
-void Player::updatePoints()
-{
+    // TODO: update the angle here
+    // m_angle += Pi / 32;
+
+    updateVel(); // again this is just acceleration
+
     m_points_world.clear();
     for (int i = 0; i < m_points_local.size(); i++)
     {
@@ -65,24 +62,21 @@ void Player::updatePoints()
     }
 }
 
-const Position Player::getPos() const
+void Player::draw(sf::RenderWindow &window)
 {
-    return m_pos;
-}
+    sf::ConvexShape m_shape;
+    m_shape.setPointCount(3);
 
-void Player::setPos(Position new_pos)
-{
-    m_pos = new_pos;
-}
+    for (int i = 0; i < m_points_world.size(); i++)
+    {
+        sf::Vector2f& point = m_points_world[i];
+        m_shape.setPoint(i, {point.x, point.y});
+    }
 
-const std::string* Player::getName() const
-{
-    return m_name;
-}
-
-Player::~Player()
-{
-    delete m_name;
+    m_shape.setFillColor(sf::Color(255, 255, 0));
+    m_shape.setOutlineThickness(1.f);
+    m_shape.setOutlineColor(sf::Color(0, 0, 0));
+    window.draw(m_shape);
 }
 
 Player::Player(const Player &other)
