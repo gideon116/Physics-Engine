@@ -2,12 +2,10 @@
 #include <cmath>
 
 
-void Player::sustainedForce(const float angle, const float force)
+void Player::applyForce(const float angle, const float force)
 {
     Vector da = Vector::fromPol(force / m_mass, angle);
-    float ax = m_acc.x + da.x;
-    float ay = m_acc.y + da.y;
-    m_acc.cartUpdate(ax, ay);
+    m_acc.cartUpdate(da.x, da.y);
 }
 
 void Player::pulse(const float angle, const float mag)
@@ -18,9 +16,15 @@ void Player::pulse(const float angle, const float mag)
     m_vel.cartUpdate(vx, vy);
 }
 
-void Player::pulse(const Vector impulse)
+void Player::pulse(const Vector impulse_norm, const Vector contact_point)
 {
-    m_vel.polUpdate(impulse.mag / m_mass, impulse.angle);
+    float vx = m_vel.x + impulse_norm.x / m_mass;
+    float vy = m_vel.y + impulse_norm.y / m_mass;
+    m_vel.cartUpdate(vx, vy);
+    
+    float num = (-contact_point.y + m_pos.y) * impulse_norm.x +
+                (contact_point.x - m_pos.x) * impulse_norm.y;
+    m_ang_vel += num / m_I;
 }
 
 void Player::updateTime()
@@ -38,6 +42,7 @@ void Player::updateVel() // this just applies acceleration
     m_vel.cartUpdate(vx, vy);
 
     // apply angular acceleration
+    m_ang_vel += m_ang_acc * m_dt;
 }
 
 void Player::updatePos()
@@ -48,7 +53,7 @@ void Player::updatePos()
     m_pos.y += m_vel.y * m_dt + 0.5 * m_acc.y * m_dt * m_dt;
 
     // TODO: update the angle here
-    // m_angle += Pi / 32;
+    m_angle += m_ang_vel * m_dt + 0.5 * m_ang_acc * m_dt * m_dt;
 
     updateVel(); // again this is just acceleration
 

@@ -21,7 +21,7 @@ public:
     {
         return Vector(mag, angle, std::cos(angle) * mag, std::sin(angle) * mag);
     }
-    
+
     float mag = 0, angle = 0, x = 0, y = 0;
     void cartUpdate(float x_, float y_)
     {
@@ -37,7 +37,7 @@ public:
         x = std::cos(angle) * mag;
         y = std::sin(angle) * mag;
     }
-    
+
 private:
     Vector(float mag_, float angle_, float x_, float y_) : mag(mag_), angle(angle_), x(x_), y(y_) {}
 };
@@ -65,7 +65,7 @@ public:
         m_points_local.push_back({32.f, 32.f * std::sqrt(3.f)});
         m_points_local.push_back({64.f, 0.f});
 
-        m_I = m_mass * 64;
+        m_I = m_mass * std::pow(64, 2) / 12;
 
         float A = 0, Cx = 0, Cy = 0;
         for (int i = 0; i < m_points_local.size(); i++)
@@ -83,15 +83,14 @@ public:
         A *= 0.5;
         Cx *= 1/(6 * A);
         Cy *= 1/(6 * A);
-        m_centroid = Vector::fromCart(Cx, Cy);
 
         for (int i = 0; i < m_points_local.size(); i++)
             m_points_local[i] = {m_points_local[i].x - Cx, m_points_local[i].y - Cy};
     };
     
-    void sustainedForce(const float angle, const float force);
+    void applyForce(const float angle, const float force);
     void pulse(const float angle, const float mag);
-    void pulse(const Vector impulse);
+    void pulse(const Vector impulse_norm, const Vector contact_point);
 
     void updatePos();
     void updateVel();
@@ -100,6 +99,8 @@ public:
 
 
     const Position getPos() const { return m_pos; }
+    const float getI() const { return m_I; }
+    const float getW() const { return m_ang_vel; }
     // TODO: return vel as constant
     Vector& getVel() { return m_vel; }
     const float& getMass() { return m_mass; }
@@ -121,9 +122,9 @@ private:
     std::string* m_name = nullptr;
     Position m_pos;
     Vector m_acc = Vector::fromCart(0, 0);
-    Vector m_ang_acc = Vector::fromCart(0, 0);
+    float m_ang_acc = 0;
     Vector m_vel = Vector::fromCart(0, 0);
-    Vector m_centroid = Vector::fromCart(0, 0);
+    float m_ang_vel = 0;
     std::chrono::steady_clock::time_point m_time;
     float m_dt = 0;
     float m_mass = 2;

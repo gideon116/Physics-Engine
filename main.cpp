@@ -21,18 +21,23 @@ sf::Vector2f getContactPoints(
     {
         for (int i = 0; i < B_vertices.size(); i++)
         {
+
             sf::Vector2f p1 = B_vertices[i], p2 = B_vertices[(i + 1) % B_vertices.size()];
             sf::Vector2f v = {p2.x - p1.x, p2.y - p1.y};
             sf::Vector2f w = {c.x - p1.x, c.y - p1.y};
 
-            float t = (w.x * v.x + w.y * v.y) / (v.x * v.x + v.y * v.y);
-            sf::Vector2f w_p = {v.x * t, v.y * t};
-            sf::Vector2f w_t = {w.x - w_p.x, w.y - w_p.y};
-            float d = std::sqrt(w_t.x * w_t.x + w_t.y * w_t.y);
-            if (d < min_dist)
+
+            float t = (w.x * v.x + w.y * v.y) / (v.x * v.x + v.y * v.y); // w . v / v . v
+            if (t >= 0 && t <= 1)
             {
-                min_dist = d;
-                contact = c;
+                sf::Vector2f w_p = {v.x * t, v.y * t}; // v * t
+                sf::Vector2f w_t = {w.x - w_p.x, w.y - w_p.y}; // w - v * t
+                float d = std::sqrt(w_t.x * w_t.x + w_t.y * w_t.y);
+                if (d < min_dist)
+                {
+                    min_dist = d;
+                    contact = c;
+                }
             }
         }
     }
@@ -122,6 +127,12 @@ Collision checkOverlap(Player& A, Player& B)
             c.normal = axis_2[i];
         }
     }
+    float d = (B.getPos().x - A.getPos().x) * c.normal.x + (B.getPos().y - A.getPos().y) * c.normal.y;
+    if (d < 0)
+    {
+        c.normal.x *= -1;
+        c.normal.y *= -1;
+    }
     c.collide = true;
     c.contact = getContactPoints(A_vertices, B_vertices);
     return c;
@@ -180,7 +191,6 @@ void semiElasticCollision(Player& A, Player& B, float e = 0.9)
     A.updateVel(v_a2_x, v_a2_y);
     B.updateVel(v_b2_x, v_b2_y);
 }
-
 
 void inBounds(Player& A, const float boundRight,
               const float boundLeft, const float boundBottom, const float boundTop, const float e)
@@ -309,24 +319,42 @@ int main()
                     sBob.getPos().x - (c.normal.x * norm_sBob_mass),
                     sBob.getPos().y - (c.normal.y * norm_sBob_mass)});
                 sPat.setPos({
-                    sPat.getPos().x - (c.normal.x * norm_sBob_mass),
-                    sPat.getPos().y - (c.normal.y * norm_sPat_mass)});
-
-                float mag = (sPat.getVel().x - sBob.getVel().x) * c.normal.x +
-                            (sPat.getVel().y - sBob.getVel().y) * c.normal.y;
+                    sPat.getPos().x + (c.normal.x * norm_sPat_mass),
+                    sPat.getPos().y + (c.normal.y * norm_sPat_mass)});
+                
+                Vector r_ap = Vector::fromCart(-c.contact.y + sBob.getPos().y, c.contact.x - sBob.getPos().x);
+                Vector r_bp = Vector::fromCart(-c.contact.y + sPat.getPos().y, c.contact.x - sPat.getPos().x);
+                Vector v_ap = Vector::fromCart(sBob.getVel().x + sBob.getW() * r_ap.x, sBob.getVel().y + sBob.getW() * r_ap.y);
+                Vector v_bp = Vector::fromCart(sPat.getVel().x + sPat.getW() * r_bp.x, sPat.getVel().y + sPat.getW() * r_bp.y);
+                float mag = (v_bp.x - v_ap.x) * c.normal.x +
+                            (v_bp.y - v_ap.y) * c.normal.y;
 
                 if (mag < 0) // > 0 would mean they are already seperating
                 {
-                    Vector impulse = Vector::fromCart(
-                        -(1 + e) * mag / (inv_comb_mass) * c.normal.x,
-                        -(1 + e) * mag / (inv_comb_mass) * c.normal.y
+                    
+                    
+                    Vector r_ac_prep = Vector::fromCart(-sBob.getPos().y + c.contact.y, sBob.getPos().x - c.contact.x);
+                    Vector r_bc_prep = Vector::fromCart(-sPat.getPos().y + c.contact.y, sPat.getPos().x - c.contact.x);
+                    float r_ac_prep_n = std::pow(r_ac_prep.x * c.normal.x + r_ac_prep.y * c.normal.y, 2) / sBob.getI();
+                    float r_bc_prep_n = std::pow(r_bc_prep.x * c.normal.x + r_bc_prep.y * c.normal.y, 2) / sPat.getI();
+
+                    float denom = c.normal.x * c.normal.x * inv_comb_mass +
+                                    c.normal.y * c.normal.y * inv_comb_mass +
+                                    r_ac_prep_n + r_bc_prep_n;
+
+                    float impulse = -(1 + e) * mag / denom;
+                    Vector impulse_norm = Vector::fromCart(
+                        impulse * c.normal.x,
+                        impulse * c.normal.y
                     );
-                    sBob.pulse(Vector::fromCart(-impulse.x, -impulse.y));
-                    sPat.pulse(impulse);
+                    sBob.pulse(Vector::fromCart(-impulse_norm.x, -impulse_norm.y),
+                               Vector::fromCart(c.contact.x, c.contact.y));
+                    sPat.pulse(impulse_norm,
+                               Vector::fromCart(c.contact.x, c.contact.y));
                 }
 
-                // r_OB = c.contact - sBob.centroid
-                // r_OB_p = -r.y, r.x
+                // r_OB = c.contact - sBob.m_pos
+                // r_OB_p = {-r_OB.y, r_OB.x}
                 // v_B = w * r_OB_p
             }
 
