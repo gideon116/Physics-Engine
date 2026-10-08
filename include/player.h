@@ -6,86 +6,43 @@
 #include <cmath>
 #include <chrono>
 #include <SFML/Graphics.hpp>
+#include "vector.h"
 
 constexpr float Pi = 3.14159265358979323846264338327950288419716939937510;
-
-class Vector
-{
-public:
-    static Vector fromCart(float x, float y)
-    {
-        return Vector(std::sqrt(std::pow(x, 2) + std::pow(y, 2)), std::atan2(y, x), x, y);
-
-    }
-    static Vector fromPol(float mag, float angle)
-    {
-        return Vector(mag, angle, std::cos(angle) * mag, std::sin(angle) * mag);
-    }
-
-    float mag = 0, angle = 0, x = 0, y = 0;
-    void cartUpdate(float x_, float y_)
-    {
-        mag = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
-        angle = std::atan2(y, x);
-        x = x_;
-        y = y_;
-    }
-    void polUpdate(float mag_, float angle_)
-    {
-        mag = mag_;
-        angle = angle_;
-        x = std::cos(angle) * mag;
-        y = std::sin(angle) * mag;
-    }
-
-private:
-    Vector(float mag_, float angle_, float x_, float y_) : mag(mag_), angle(angle_), x(x_), y(y_) {}
-};
-
-struct Position
-{
-    float x = 0, y = 0;
-};
 
 class Player
 {
 public:
     Player(
-        const std::string &name, const float x, const float y,
-        const std::string &color, const float mass = 2)
+        const std::string& name, const float x, const float y,
+        const std::string& shape = "triangle", const float mass = 2)
     {
         m_name = new std::string(name);
         m_pos = {x, y};
         m_time = std::chrono::steady_clock::now();
         m_mass = mass;
 
-        m_points_local.reserve(3);
-        m_points_world.reserve(3);
-        m_points_local.push_back({0.f, 0.f});
-        m_points_local.push_back({32.f, 32.f * std::sqrt(3.f)});
-        m_points_local.push_back({64.f, 0.f});
-
-        m_I = m_mass * std::pow(64, 2) / 12;
-
-        float A = 0, Cx = 0, Cy = 0;
-        for (int i = 0; i < m_points_local.size(); i++)
+        if (shape == "triangle")
         {
-            const sf::Vector2f& point_i = m_points_local[i];
-            const sf::Vector2f& point_i_p1 = (i == m_points_local.size() - 1)
-                                             ? m_points_local[0]
-                                             : m_points_local[i + 1];
-            A += point_i.x * point_i_p1.y - point_i_p1.x * point_i.y;
-
-            float temp_var = point_i.x * point_i_p1.y - point_i_p1.x * point_i.y;
-            Cx += (point_i.x + point_i_p1.x) * temp_var;
-            Cy += (point_i.y + point_i_p1.y) * temp_var;
+            m_points_world.reserve(3);
+            m_points_local.reserve(3);
+            m_points_local.push_back({0.f, 0.f});
+            m_points_local.push_back({32.f, 32.f * std::sqrt(3.f)});
+            m_points_local.push_back({64.f, 0.f});
+            m_I = m_mass * std::pow(64, 2) / 12;
         }
-        A *= 0.5;
-        Cx *= 1/(6 * A);
-        Cy *= 1/(6 * A);
+        else if (shape == "rectangle")
+        {
+            m_points_world.reserve(4);
+            m_points_local.reserve(4);
+            m_points_local.push_back({0.f, 0.f});
+            m_points_local.push_back({800.f, 0.f});
+            m_points_local.push_back({800.f, 50.f});
+            m_points_local.push_back({0.f, 50.f});
+            m_I = m_mass * (std::pow(800, 2) + std::pow(50, 2)) / 12;
+        }
 
-        for (int i = 0; i < m_points_local.size(); i++)
-            m_points_local[i] = {m_points_local[i].x - Cx, m_points_local[i].y - Cy};
+        normToCentroid();
     };
     
     void applyForce(const float angle, const float force);
@@ -97,8 +54,7 @@ public:
     void updateVel(const float vx, const float vy) { m_vel.cartUpdate(vx, vy); }
     void updateTime();
 
-
-    const Position getPos() const { return m_pos; }
+    const Vector getPos() const { return m_pos; }
     const float getI() const { return m_I; }
     const float getW() const { return m_ang_vel; }
     // TODO: return vel as constant
@@ -107,9 +63,10 @@ public:
     const float& getDt() { return m_dt; }
     const std::string* getName() const { return m_name; }
 
-    void setPos(Position new_pos) { m_pos = new_pos; };
-    std::vector<sf::Vector2f> &getPoints() { return m_points_world; }
-    void draw(sf::RenderWindow &window);
+    void setPos(Vector new_pos) { m_pos = new_pos; };
+    std::vector<Vector> &getPoints() { return m_points_world; }
+    void draw(sf::RenderWindow& window, const sf::Color& color = sf::Color(255, 255, 0));
+    void normToCentroid();
 
     // rule of 5
     ~Player() { delete m_name; }
@@ -120,10 +77,10 @@ public:
 
 private:
     std::string* m_name = nullptr;
-    Position m_pos;
-    Vector m_acc = Vector::fromCart(0, 0);
+    Vector m_pos = {0, 0};
+    Vector m_acc = {0, 0};
     float m_ang_acc = 0;
-    Vector m_vel = Vector::fromCart(0, 0);
+    Vector m_vel = {0, 0};
     float m_ang_vel = 0;
     std::chrono::steady_clock::time_point m_time;
     float m_dt = 0;
@@ -131,9 +88,8 @@ private:
     float m_angle = 0;
     float m_I = 0;
 
-    std::vector<sf::Vector2f> m_points_local;
-    std::vector<sf::Vector2f> m_points_world;
-
+    std::vector<Vector> m_points_local;
+    std::vector<Vector> m_points_world;
 };
 
 #endif

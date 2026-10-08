@@ -9,6 +9,7 @@ add_executable(
     app
     main.cpp
     src/player.cpp
+    src/vector.cpp
 )
 
 target_include_directories(
