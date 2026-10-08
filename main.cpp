@@ -6,60 +6,56 @@
 
 struct Collision
 {
-    sf::Vector2f normal;
-    sf::Vector2f contact;
+    Vector normal;
+    Vector contact;
     float overlap;
     bool collide = false;
 };
 
-sf::Vector2f getContactPoints(
-    const std::vector<sf::Vector2f>& A_vertices,  const std::vector<sf::Vector2f>& B_vertices)
+void getContactPoints(
+    const std::vector<Vector>& A_vertices,  const std::vector<Vector>& B_vertices,
+    float& min_dist, Vector& contact)
 {
-    sf::Vector2f contact;
-    float min_dist = 1e6;
+    float d = min_dist;
     for (const auto& c : A_vertices)
     {
         for (int i = 0; i < B_vertices.size(); i++)
         {
-
-            sf::Vector2f p1 = B_vertices[i], p2 = B_vertices[(i + 1) % B_vertices.size()];
-            sf::Vector2f v = {p2.x - p1.x, p2.y - p1.y};
-            sf::Vector2f w = {c.x - p1.x, c.y - p1.y};
-
+            Vector p1 = B_vertices[i], p2 = B_vertices[(i + 1) % B_vertices.size()];
+            Vector v = {p2.x - p1.x, p2.y - p1.y};
+            Vector w = {c.x - p1.x, c.y - p1.y};
 
             float t = (w.x * v.x + w.y * v.y) / (v.x * v.x + v.y * v.y); // w . v / v . v
             if (t >= 0 && t <= 1)
             {
-                sf::Vector2f w_p = {v.x * t, v.y * t}; // v * t
-                sf::Vector2f w_t = {w.x - w_p.x, w.y - w_p.y}; // w - v * t
-                float d = std::sqrt(w_t.x * w_t.x + w_t.y * w_t.y);
-                if (d < min_dist)
-                {
-                    min_dist = d;
-                    contact = c;
-                }
+                Vector w_p = {v.x * t, v.y * t}; // v * t
+                Vector w_t = {w.x - w_p.x, w.y - w_p.y}; // w - v * t
+                d = std::sqrt(w_t.x * w_t.x + w_t.y * w_t.y);
+            }
+            if (d < min_dist)
+            {
+                min_dist = d;
+                contact = c;
             }
         }
     }
-    return contact;
 }
 
-
-std::vector<sf::Vector2f> getAxis(const std::vector<sf::Vector2f>& vertices)
+std::vector<Vector> getAxis(const std::vector<Vector>& vertices)
 {
-    std::vector<sf::Vector2f> axis;
+    std::vector<Vector> axis;
     axis.reserve(vertices.size());
     for (int i = 0; i < vertices.size(); i++)
     {
         int next_i = (i == vertices.size() - 1) ? 0 : i + 1;
-        sf::Vector2f edge = {
+        Vector edge = {
             vertices[i].y - vertices[next_i].y, - (vertices[i].x - vertices[next_i].x)};
         axis.push_back(edge / std::sqrt(edge.x * edge.x + edge.y * edge.y));
     }
     return axis;
 }
 
-std::array<float, 2> project(const sf::Vector2f& axis, const std::vector<sf::Vector2f>& vertices)
+std::array<float, 2> project(const Vector& axis, const std::vector<Vector>& vertices)
 {
     float min = vertices[0].x * axis.x + vertices[0].y * axis.y;
     float max = min;
@@ -75,13 +71,13 @@ std::array<float, 2> project(const sf::Vector2f& axis, const std::vector<sf::Vec
 
 Collision checkOverlap(Player& A, Player& B)
 {
-    std::vector<sf::Vector2f> &A_vertices = A.getPoints();
-    std::vector<sf::Vector2f> &B_vertices = B.getPoints();
+    std::vector<Vector> &A_vertices = A.getPoints();
+    std::vector<Vector> &B_vertices = B.getPoints();
 
-    std::vector<sf::Vector2f> axis_1 = getAxis(A_vertices);
-    std::vector<sf::Vector2f> axis_2 = getAxis(B_vertices);
+    std::vector<Vector> axis_1 = getAxis(A_vertices);
+    std::vector<Vector> axis_2 = getAxis(B_vertices);
 
-    Collision c = {{}, {}, 1e9, false};
+    Collision c = {{0, 0}, {0, 0}, 1e9, false};
 
     for (int i = 0; i < A_vertices.size(); i++)
     {
@@ -134,8 +130,45 @@ Collision checkOverlap(Player& A, Player& B)
         c.normal.y *= -1;
     }
     c.collide = true;
-    c.contact = getContactPoints(A_vertices, B_vertices);
+    float min_dist = 1e6;
+    getContactPoints(A_vertices, B_vertices, min_dist, c.contact);
+    getContactPoints(B_vertices, A_vertices, min_dist, c.contact);
     return c;
+}
+
+void collide(Player& A, Player& B, const Collision& c, float e)
+{
+    float inv_A_mass = 1/A.getMass(), inv_B_mass = 1/B.getMass();
+    float inv_comb_mass = inv_A_mass + inv_B_mass;
+    float norm_A_mass = c.overlap * inv_A_mass / inv_comb_mass;
+    float norm_B_mass = c.overlap * inv_B_mass / inv_comb_mass;
+
+    A.setPos(A.getPos() - (c.normal * norm_A_mass));
+    B.setPos(B.getPos() + (c.normal * norm_B_mass));
+
+    Vector r_ap = (c.contact - A.getPos()).perp();
+    Vector r_bp = (c.contact - B.getPos()).perp(); 
+    Vector v_ap = A.getVel() + A.getW() * r_ap;
+    Vector v_bp = B.getVel() + B.getW() * r_bp;
+
+    float mag = Vector::dot((v_bp - v_ap), c.normal);
+
+    if (mag < 0) // > 0 would mean they are already seperating
+    {
+        
+        Vector r_ac_prep = (A.getPos() - c.contact).perp();
+        Vector r_bc_prep = (B.getPos() - c.contact).perp();
+        float r_ac_prep_n = std::pow(Vector::dot(r_ac_prep, c.normal), 2) / A.getI();
+        float r_bc_prep_n = std::pow(Vector::dot(r_bc_prep, c.normal), 2) / B.getI();
+
+        float denom = Vector::dot(c.normal, c.normal * inv_comb_mass) + r_ac_prep_n + r_bc_prep_n;
+
+        float impulse = -(1 + e) * mag / denom;
+        Vector impulse_norm = impulse * c.normal;
+
+        A.pulse(impulse_norm * -1, c.contact);
+        B.pulse(impulse_norm, c.contact);
+    }
 }
 
 void elasticCollision(Player& A, Player& B)
@@ -192,45 +225,6 @@ void semiElasticCollision(Player& A, Player& B, float e = 0.9)
     B.updateVel(v_b2_x, v_b2_y);
 }
 
-void inBounds(Player& A, const float boundRight,
-              const float boundLeft, const float boundBottom, const float boundTop, const float e)
-{
-
-    std::vector<sf::Vector2f> &points = A.getPoints();
-
-    for (const auto& point : points)
-    {
-        float diff = point.x - boundRight;
-        if (diff > 0)
-        {
-            A.setPos({(A.getPos().x - diff), A.getPos().y});
-            A.updateVel(-A.getVel().x * e, A.getVel().y);
-        }
-        diff = boundLeft - point.x;
-        if (diff > 0)
-        {
-            A.setPos({(A.getPos().x + diff), A.getPos().y});
-            A.updateVel(-A.getVel().x * e, A.getVel().y);
-        }
-        diff = boundTop - point.y;
-        if (diff > 0)
-        {
-            A.setPos({A.getPos().x, (A.getPos().y + diff)});
-            A.updateVel(A.getVel().x, -A.getVel().y * e);
-        }
-        diff = point.y - boundBottom;
-        if (diff > 0)
-        {
-            A.setPos({A.getPos().x, (A.getPos().y - diff)});
-            A.updateVel(A.getVel().x, -A.getVel().y * e);
-
-            // friction
-            // sBob.pulse(Pi + sBob.getVel().angle, frictionCoe * gravity * sBob.getDt());
-        }
-    }
-}
-
-
 int main()
 {
     int frame = 0;
@@ -249,19 +243,14 @@ int main()
     float e = 0.9;
 
     // set the scene
-    sf::RectangleShape groundS({800, 50});
-    groundS.setFillColor(sf::Color(196, 164, 132));
-    groundS.setPosition({0, boundBottom});
+    Player groundS = {"groundS", 400, 550 + 25, "rectangle", 2e9};
+    Player skyS = {"skyS", 400, 25, "rectangle", 2e9};
 
-    sf::RectangleShape skyS({800, 50});
-    skyS.setFillColor(sf::Color(135, 206, 235));
-    skyS.setPosition({0, 0});
-
-    Player sBob = {"sBob", 50, 100, "red"};
-    Player sPat = {"sPat", 400, 100, "green"};
+    Player sBob = {"sBob", 50, 100, "triangle"};
+    Player sPat = {"sPat", 400, 100, "triangle"};
     
-    // sBob.sustainedForce(-3*Pi/2, gravity);
-    // sPat.sustainedForce(-3*Pi/2, gravity);
+    // sBob.applyForce(-3*Pi/2, gravity);
+    // sPat.applyForce(-3*Pi/2, gravity);
 
     while (window.isOpen())
     {
@@ -290,7 +279,7 @@ int main()
             }
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up))
             { 
-                sBob.pulse(-Pi/2, 1000);
+                sBob.pulse(-Pi/2, 100);
                 delay = frame;
             }
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down))
@@ -303,70 +292,35 @@ int main()
         {
             sBob.updatePos();
             sPat.updatePos();
-
-            inBounds(sBob, boundRight, boundLeft, boundBottom, boundTop, e);
-            inBounds(sPat, boundRight, boundLeft, boundBottom, boundTop, e);
+            groundS.updatePos();
+            skyS.updatePos();
 
             Collision c = checkOverlap(sBob, sPat);
             if (c.collide)
-            {
-                float inv_sBob_mass = 1/sBob.getMass(), inv_sPat_mass = 1/sPat.getMass();
-                float inv_comb_mass = inv_sBob_mass + inv_sPat_mass;
-                float norm_sBob_mass = c.overlap * inv_sBob_mass / inv_comb_mass;
-                float norm_sPat_mass = c.overlap * inv_sPat_mass / inv_comb_mass;
+                collide(sBob, sPat, c, e);
 
-                sBob.setPos({
-                    sBob.getPos().x - (c.normal.x * norm_sBob_mass),
-                    sBob.getPos().y - (c.normal.y * norm_sBob_mass)});
-                sPat.setPos({
-                    sPat.getPos().x + (c.normal.x * norm_sPat_mass),
-                    sPat.getPos().y + (c.normal.y * norm_sPat_mass)});
-                
-                Vector r_ap = Vector::fromCart(-c.contact.y + sBob.getPos().y, c.contact.x - sBob.getPos().x);
-                Vector r_bp = Vector::fromCart(-c.contact.y + sPat.getPos().y, c.contact.x - sPat.getPos().x);
-                Vector v_ap = Vector::fromCart(sBob.getVel().x + sBob.getW() * r_ap.x, sBob.getVel().y + sBob.getW() * r_ap.y);
-                Vector v_bp = Vector::fromCart(sPat.getVel().x + sPat.getW() * r_bp.x, sPat.getVel().y + sPat.getW() * r_bp.y);
-                float mag = (v_bp.x - v_ap.x) * c.normal.x +
-                            (v_bp.y - v_ap.y) * c.normal.y;
-
-                if (mag < 0) // > 0 would mean they are already seperating
-                {
-                    
-                    
-                    Vector r_ac_prep = Vector::fromCart(-sBob.getPos().y + c.contact.y, sBob.getPos().x - c.contact.x);
-                    Vector r_bc_prep = Vector::fromCart(-sPat.getPos().y + c.contact.y, sPat.getPos().x - c.contact.x);
-                    float r_ac_prep_n = std::pow(r_ac_prep.x * c.normal.x + r_ac_prep.y * c.normal.y, 2) / sBob.getI();
-                    float r_bc_prep_n = std::pow(r_bc_prep.x * c.normal.x + r_bc_prep.y * c.normal.y, 2) / sPat.getI();
-
-                    float denom = c.normal.x * c.normal.x * inv_comb_mass +
-                                    c.normal.y * c.normal.y * inv_comb_mass +
-                                    r_ac_prep_n + r_bc_prep_n;
-
-                    float impulse = -(1 + e) * mag / denom;
-                    Vector impulse_norm = Vector::fromCart(
-                        impulse * c.normal.x,
-                        impulse * c.normal.y
-                    );
-                    sBob.pulse(Vector::fromCart(-impulse_norm.x, -impulse_norm.y),
-                               Vector::fromCart(c.contact.x, c.contact.y));
-                    sPat.pulse(impulse_norm,
-                               Vector::fromCart(c.contact.x, c.contact.y));
-                }
-
-                // r_OB = c.contact - sBob.m_pos
-                // r_OB_p = {-r_OB.y, r_OB.x}
-                // v_B = w * r_OB_p
-            }
-
-            std::cout << c.collide << "\n";
-            std::cout << c.contact.x << " " << c.contact.y << "\n";
+            c = checkOverlap(sBob, groundS);
+            if (c.collide)
+                collide(sBob, groundS, c, e);
+            
+            c = checkOverlap(sPat, groundS);
+            if (c.collide)
+                collide(sPat, groundS, c, e);
+            
+            c = checkOverlap(sBob, skyS);
+            if (c.collide)
+                collide(sBob, skyS, c, e);
+            
+            c = checkOverlap(sPat, skyS);
+            if (c.collide)
+                collide(sPat, skyS, c, e);
         }
 
         sBob.draw(window);
         sPat.draw(window);
 
-        window.draw(groundS);
-        window.draw(skyS);
+        groundS.draw(window, sf::Color(196, 164, 132));
+        skyS.draw(window, sf::Color(135, 206, 235));
 
         // -------------------
 
