@@ -9,6 +9,7 @@ add_executable(
     app
     main.cpp
     src/player.cpp
+    src/physics.cpp
     src/vector.cpp
 )
 
