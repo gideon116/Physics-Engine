@@ -14,8 +14,8 @@ class Player
 {
 public:
     Player(
-        const std::string& name, const float x, const float y,
-        const std::string& shape = "triangle", const float mass = 2)
+        const std::string& name, const float x, const float y, const float mass = 2,
+        const std::string& shape = "triangle", const float side1 = 64.f, const float side2 = 64.f)
     {
         m_name = new std::string(name);
         m_pos = {x, y};
@@ -27,21 +27,20 @@ public:
             m_points_world.reserve(3);
             m_points_local.reserve(3);
             m_points_local.push_back({0.f, 0.f});
-            m_points_local.push_back({32.f, 32.f * std::sqrt(3.f)});
-            m_points_local.push_back({64.f, 0.f});
-            m_I = m_mass * std::pow(64, 2) / 12;
+            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
+            m_points_local.push_back({side1, 0.f});
+            m_I = m_mass * std::pow(side1, 2) / 12;
         }
         else if (shape == "rectangle")
         {
             m_points_world.reserve(4);
             m_points_local.reserve(4);
             m_points_local.push_back({0.f, 0.f});
-            m_points_local.push_back({800.f, 0.f});
-            m_points_local.push_back({800.f, 50.f});
-            m_points_local.push_back({0.f, 50.f});
-            m_I = m_mass * (std::pow(800, 2) + std::pow(50, 2)) / 12;
+            m_points_local.push_back({side1, 0.f});
+            m_points_local.push_back({side1, side2});
+            m_points_local.push_back({0.f, side2});
+            m_I = m_mass * (std::pow(side1, 2) + std::pow(side2, 2)) / 12;
         }
-
         normToCentroid();
     };
     
@@ -49,6 +48,7 @@ public:
     void pulse(const float angle, const float mag);
     void pulse(const Vector impulse_norm, const Vector contact_point);
 
+    void updateWorldPoints();
     void updatePos();
     void updateVel();
     void updateVel(const float vx, const float vy) { m_vel.cartUpdate(vx, vy); }
@@ -63,7 +63,7 @@ public:
     const float& getDt() { return m_dt; }
     const std::string* getName() const { return m_name; }
 
-    void setPos(Vector new_pos) { m_pos = new_pos; };
+    void setPos(Vector new_pos) { m_pos = new_pos; updateWorldPoints(); };
     std::vector<Vector> &getPoints() { return m_points_world; }
     void draw(sf::RenderWindow& window, const sf::Color& color = sf::Color(255, 255, 0));
     void normToCentroid();

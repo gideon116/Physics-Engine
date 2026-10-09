@@ -34,6 +34,10 @@ public:
 
     Vector& operator+=(const Vector& other);
 
+    Vector& operator*=(const Vector& other);
+
+    Vector& operator*=(const float& scale);
+
 public:
     float mag = 0, angle = 0, x = 0, y = 0;
 };

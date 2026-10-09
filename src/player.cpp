@@ -39,18 +39,8 @@ void Player::updateVel() // this just applies acceleration
     m_ang_vel += m_ang_acc * m_dt;
 }
 
-void Player::updatePos()
+void Player::updateWorldPoints()
 {
-    updateTime();
-
-    m_pos += m_vel * m_dt + 0.5 * m_acc * m_dt * m_dt;
-
-
-    // TODO: update the angle here
-    m_angle += m_ang_vel * m_dt + 0.5 * m_ang_acc * m_dt * m_dt;
-
-    updateVel(); // again this is just acceleration
-
     m_points_world.clear();
     for (int i = 0; i < m_points_local.size(); i++)
     {
@@ -61,10 +51,19 @@ void Player::updatePos()
     }
 }
 
+void Player::updatePos()
+{
+    updateTime();
+
+    m_pos += m_vel * m_dt + 0.5 * m_acc * m_dt * m_dt;
+    m_angle += m_ang_vel * m_dt + 0.5 * m_ang_acc * m_dt * m_dt;
+
+    updateVel(); // again this is just acceleration
+    updateWorldPoints();
+}
+
 void Player::draw(sf::RenderWindow& window, const sf::Color& color)
 {
-    
-
     sf::ConvexShape m_shape;
     m_shape.setPointCount(m_points_world.size());
     for (int i = 0; i < m_points_world.size(); i++)
@@ -81,7 +80,8 @@ void Player::draw(sf::RenderWindow& window, const sf::Color& color)
 
 void Player::normToCentroid()
 {
-    float A = 0, Cx = 0, Cy = 0;
+    float A = 0;
+    Vector CxCy = {0, 0};
     for (int i = 0; i < m_points_local.size(); i++)
     {
         const Vector& point_i = m_points_local[i];
@@ -91,14 +91,13 @@ void Player::normToCentroid()
         A += point_i.x * point_i_p1.y - point_i_p1.x * point_i.y;
 
         float temp_var = point_i.x * point_i_p1.y - point_i_p1.x * point_i.y;
-        Cx += (point_i.x + point_i_p1.x) * temp_var;
-        Cy += (point_i.y + point_i_p1.y) * temp_var;
+        CxCy += (point_i + point_i_p1) * temp_var;
     }
+
     A *= 0.5;
-    Cx *= 1/(6 * A);
-    Cy *= 1/(6 * A);
+    CxCy *= 1/(6 * A);
     for (int i = 0; i < m_points_local.size(); i++)
-        m_points_local[i] = {m_points_local[i].x - Cx, m_points_local[i].y - Cy};
+        m_points_local[i] = {m_points_local[i] - CxCy};
 }
 
 Player::Player(const Player &other)

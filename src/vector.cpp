@@ -57,3 +57,21 @@ Vector& Vector::operator+=(const Vector& other)
     this->angle = angleFromCart(this->x, this->y);
     return *this;
 }
+
+Vector& Vector::operator*=(const Vector& other)
+{
+    this->x *= other.x;
+    this->y *= other.y;
+    this->mag = magFromCart(this->x, this->y);
+    this->angle = angleFromCart(this->x, this->y);
+    return *this;
+}
+
+Vector& Vector::operator*=(const float& scale)
+{
+    this->x *= scale;
+    this->y *= scale;
+    this->mag = magFromCart(this->x, this->y);
+    this->angle = angleFromCart(this->x, this->y);
+    return *this;
+}
