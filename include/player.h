@@ -15,7 +15,8 @@ class Player
 public:
     Player(
         const std::string& name, const float x, const float y, const float mass = 2,
-        const std::string& shape = "triangle", const float side1 = 64.f, const float side2 = 64.f)
+        const std::string& shape = "triangle", const float side1 = 64.f, const float side2 = 64.f
+    )
     {
         m_name = new std::string(name);
         m_pos = {x, y};
@@ -57,14 +58,13 @@ public:
     const Vector getPos() const { return m_pos; }
     const float getI() const { return m_I; }
     const float getW() const { return m_ang_vel; }
-    // TODO: return vel as constant
-    Vector& getVel() { return m_vel; }
-    const float& getMass() { return m_mass; }
-    const float& getDt() { return m_dt; }
+    const Vector& getVel() const { return m_vel; }
+    const float& getMass() const { return m_mass; }
+    const float& getDt() const { return m_dt; }
     const std::string* getName() const { return m_name; }
+    const std::vector<Vector>& getPoints() const { return m_points_world; }
 
     void setPos(Vector new_pos) { m_pos = new_pos; updateWorldPoints(); };
-    std::vector<Vector> &getPoints() { return m_points_world; }
     void draw(sf::RenderWindow& window, const sf::Color& color = sf::Color(255, 255, 0));
     void normToCentroid();
 
