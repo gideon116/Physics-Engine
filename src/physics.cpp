@@ -4,7 +4,8 @@ namespace Physics
 {
     void getContactPoints(
         const std::vector<Vector>& A_vertices,  const std::vector<Vector>& B_vertices,
-        float& min_dist, Vector& contact)
+        float& min_dist, Vector& contact
+    )
     {
         float d = min_dist;
         for (const auto& c : A_vertices)
@@ -59,15 +60,18 @@ namespace Physics
         return min_max;
     }
 
-    Collision checkOverlap(Player& A, Player& B)
+    void checkOverlap(Player& A, Player& B, const float e)
     {
-        std::vector<Vector> &A_vertices = A.getPoints();
-        std::vector<Vector> &B_vertices = B.getPoints();
+        Vector normal = {0, 0};
+        Vector contact = {0, 0};
+        float overlap = 1e9;
+        bool collide = false;
+
+        const std::vector<Vector>& A_vertices = A.getPoints();
+        const std::vector<Vector>& B_vertices = B.getPoints();
 
         std::vector<Vector> axis_1 = getAxis(A_vertices);
         std::vector<Vector> axis_2 = getAxis(B_vertices);
-
-        Collision c;
 
         for (int i = 0; i < A_vertices.size(); i++)
         {
@@ -75,7 +79,7 @@ namespace Physics
             std::array<float, 2> pb = project(axis_1[i], B_vertices);
             if (pa[0] > pb[1] || pa[1] < pb[0])
                 // no overlap
-                return c;
+                return;
             float top = std::min(pa[1], pb[1]);
             float bottom = std::max(pa[0], pb[0]);
             float curr_overlap = std::abs(top - bottom);
@@ -83,11 +87,10 @@ namespace Physics
             if ((pa[1] < pb[1] && pa[0] > pb[0]) || (pa[1] > pb[1] && pa[0] < pb[0]))
                 curr_overlap += std::min(std::abs(pa[0] - pb[0]), std::abs(pa[1] - pb[1]));
 
-            if (c.overlap > curr_overlap)
+            if (overlap > curr_overlap)
             {
-                c.overlap = curr_overlap;
-                c.normal = axis_1[i];
-
+                overlap = curr_overlap;
+                normal = axis_1[i];
             }
         }
         for (int i = 0; i < B_vertices.size(); i++)
@@ -97,7 +100,7 @@ namespace Physics
 
             if (pa[0] > pb[1] || pa[1] < pb[0])
                 // no overlap
-                return c;
+                return;
 
             float top = std::min(pa[1], pb[1]);
             float bottom = std::max(pa[0], pb[0]);
@@ -107,57 +110,57 @@ namespace Physics
             if ((pa[1] < pb[1] && pa[0] > pb[0]) || (pa[1] > pb[1] && pa[0] < pb[0]))
                 curr_overlap += std::min(std::abs(pa[0] - pb[0]), std::abs(pa[1] - pb[1]));
 
-            if (c.overlap > curr_overlap)
+            if (overlap > curr_overlap)
             {
-                c.overlap = curr_overlap;
-                c.normal = axis_2[i];
+                overlap = curr_overlap;
+                normal = axis_2[i];
             }
         }
-        float d = (B.getPos().x - A.getPos().x) * c.normal.x + (B.getPos().y - A.getPos().y) * c.normal.y;
+        float d = Vector::dot((B.getPos() - A.getPos()), normal);
         if (d < 0)
-        {
-            c.normal.x *= -1;
-            c.normal.y *= -1;
-        }
-        c.collide = true;
+            normal *= -1;
+        collide = true;
         float min_dist = 1e6;
-        getContactPoints(A_vertices, B_vertices, min_dist, c.contact);
-        getContactPoints(B_vertices, A_vertices, min_dist, c.contact);
-        return c;
+        getContactPoints(A_vertices, B_vertices, min_dist, contact);
+        getContactPoints(B_vertices, A_vertices, min_dist, contact);
+
+        if (collide)
+            collidePlayers(A, B, normal, contact, overlap, e);
     }
 
-    void collide(Player& A, Player& B, const Collision& c, float e)
+    void collidePlayers(
+        Player& A, Player& B, const Vector& normal, Vector& contact, float& overlap, float e
+    )
     {
         float inv_A_mass = 1/A.getMass(), inv_B_mass = 1/B.getMass();
         float inv_comb_mass = inv_A_mass + inv_B_mass;
-        float norm_A_mass = c.overlap * inv_A_mass / inv_comb_mass;
-        float norm_B_mass = c.overlap * inv_B_mass / inv_comb_mass;
+        float norm_A_mass = overlap * inv_A_mass / inv_comb_mass;
+        float norm_B_mass = overlap * inv_B_mass / inv_comb_mass;
 
-        A.setPos(A.getPos() - (c.normal * norm_A_mass));
-        B.setPos(B.getPos() + (c.normal * norm_B_mass));
+        A.setPos(A.getPos() - (normal * norm_A_mass));
+        B.setPos(B.getPos() + (normal * norm_B_mass));
 
-        Vector r_ap = (c.contact - A.getPos()).perp();
-        Vector r_bp = (c.contact - B.getPos()).perp(); 
+        Vector r_ap = (contact - A.getPos()).perp();
+        Vector r_bp = (contact - B.getPos()).perp(); 
         Vector v_ap = A.getVel() + A.getW() * r_ap;
         Vector v_bp = B.getVel() + B.getW() * r_bp;
 
-        float mag = Vector::dot((v_bp - v_ap), c.normal);
+        float mag = Vector::dot((v_bp - v_ap), normal);
 
         if (mag < 0) // > 0 would mean they are already seperating
         {
-            
-            Vector r_ac_prep = (A.getPos() - c.contact).perp();
-            Vector r_bc_prep = (B.getPos() - c.contact).perp();
-            float r_ac_prep_n = std::pow(Vector::dot(r_ac_prep, c.normal), 2) / A.getI();
-            float r_bc_prep_n = std::pow(Vector::dot(r_bc_prep, c.normal), 2) / B.getI();
+            Vector r_ac_prep = (A.getPos() - contact).perp();
+            Vector r_bc_prep = (B.getPos() - contact).perp();
+            float r_ac_prep_n = std::pow(Vector::dot(r_ac_prep, normal), 2) / A.getI();
+            float r_bc_prep_n = std::pow(Vector::dot(r_bc_prep, normal), 2) / B.getI();
 
-            float denom = Vector::dot(c.normal, c.normal * inv_comb_mass) + r_ac_prep_n + r_bc_prep_n;
+            float denom = Vector::dot(normal, normal * inv_comb_mass) + r_ac_prep_n + r_bc_prep_n;
 
             float impulse = -(1 + e) * mag / denom;
-            Vector impulse_norm = impulse * c.normal;
+            Vector impulse_norm = impulse * normal;
 
-            A.pulse(impulse_norm * -1, c.contact);
-            B.pulse(impulse_norm, c.contact);
+            A.pulse(impulse_norm * -1, contact);
+            B.pulse(impulse_norm, contact);
         }
     }
 }

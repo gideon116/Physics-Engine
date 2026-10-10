@@ -33,7 +33,6 @@ int main()
     Player sBox = {"sBox", 200, 300, 4, "rectangle", 200, 50};
 
     std::vector<Player*> players = {&sBob, &sPat, &sBox, &groundS, &skyS, &left, &right};
-    Physics::Collision c;
     
     sBob.applyForce(-3*Pi/2, gravity);
     sPat.applyForce(-3*Pi/2, gravity);
@@ -83,11 +82,7 @@ int main()
             for (auto p1 : players)
                 for (auto p2 : players)
                     if (p1 != p2)
-                    {
-                        c = Physics::checkOverlap(*p1, *p2);
-                        if (c.collide)
-                            Physics::collide(*p1, *p2, c, e);
-                    }
+                        Physics::checkOverlap(*p1, *p2, e);
         }
 
         sBob.draw(window);
