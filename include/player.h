@@ -14,62 +14,21 @@ class Player
 {
 public:
     Player(
-        const std::string& name, const float x, const float y, const float mass = 2,
-        const std::string& shape = "triangle", const float side1 = 64.f, const float side2 = 64.f
+        const std::string& name, const float x, const float y,
+        const float* vertices, const float num_vertices, const float mass = 2
     )
     {
         m_name = new std::string(name);
         m_pos = {x, y};
         m_time = std::chrono::steady_clock::now();
         m_mass = mass;
+        m_vertices = num_vertices;
 
-        if (shape == "triangle")
-        {
-            m_vertices = 3;
-            m_points_world.reserve(m_vertices);
-            m_points_local.reserve(m_vertices);
-            m_points_local.push_back({0.f, 0.f});
-            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
-            m_points_local.push_back({side1, 0.f});
-
-        }
-        else if (shape == "rectangle")
-        {
-            m_vertices = 6;
-            m_points_world.reserve(m_vertices);
-            m_points_local.reserve(m_vertices);
-
-            m_points_local.push_back({0.f, 0.f});
-            m_points_local.push_back({0.f, side2});
-            m_points_local.push_back({side1, side2});
-
-            m_points_local.push_back({side1, side2});
-            m_points_local.push_back({side1, 0.f});
-            m_points_local.push_back({0.f, 0.f});
-
-        }
-        else if (shape == "2xtriangle")
-        {
-            m_vertices = 12;
-            m_points_world.reserve(m_vertices);
-            m_points_local.reserve(m_vertices);
-
-            m_points_local.push_back({0.f, 0.f});
-            m_points_local.push_back({side1, 0.f});
-            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
-
-            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
-            m_points_local.push_back({side1, 0.f});
-            m_points_local.push_back({side1 + side1/2, side1/2 * std::sqrt(3.f)});
-
-            m_points_local.push_back({0.f, 0.f});
-            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
-            m_points_local.push_back({-side1/2, side1/2 * std::sqrt(3.f)});
-
-            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
-            m_points_local.push_back({side1 + side1/2, side1/2 * std::sqrt(3.f)});
-            m_points_local.push_back({side1, side1 * std::sqrt(3.f)});
-        }
+        // TODO: we no longer need m_points_world and m_points_local to be vectors
+        m_points_world.reserve(m_vertices);
+        m_points_local.reserve(m_vertices);
+        for (int i = 0; i < num_vertices; i++)
+            m_points_local.push_back({vertices[i*2], vertices[i*2+1]});
 
         Vector CxCy = {0, 0};
         for (int i = 0; i < m_vertices/3; i++)

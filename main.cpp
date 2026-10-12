@@ -3,6 +3,31 @@
 #include "physics.h"
 #include <SFML/Graphics.hpp>
 
+std::array<float, 12> makeRectangle(const float w, const float h)
+{
+    std::array<float, 12> array = {0.f, 0.f, 0.f, h, w, h, w, h, w, 0.f, 0.f, 0.f};
+    return array;
+}
+
+std::array<float, 6> makeTriangle(const float side)
+{
+    std::array<float, 6> array = {0.f, 0.f, side/2.f, (side/2.f) * std::sqrt(3.f), side, 0.f};
+    return array;
+}
+
+std::array<float, 24> makeConcave(const float side)
+{
+    float sqrt3 = std::sqrt(3.f);
+    float sd2 = side/2.f;
+    std::array<float, 24> array =
+    {
+        0.f, 0.f, side, 0.f, sd2, sd2 * sqrt3,
+        sd2, sd2 * sqrt3, side, 0.f, side + sd2, sd2 * sqrt3,
+        0.f, 0.f, sd2, sd2 * sqrt3, -sd2, sd2 * sqrt3,
+        sd2, sd2 *  sqrt3, side + sd2, sd2 * sqrt3, side, side * sqrt3,
+    };
+    return array;
+}
 
 int main()
 {
@@ -22,15 +47,21 @@ int main()
     float e = 0.6;
 
     // set the scene
-    Player groundS = {"groundS", 400, 550 + 25, 2e9, "rectangle", 800, 50};
-    Player skyS = {"skyS", 400, 25, 2e9, "rectangle", 800, 50};
-    Player left = {"left", -25, 300, 2e9, "rectangle", 50, 496};
-    Player right = {"right", 825, 300, 2e9, "rectangle", 50, 496};
+    std::array<float, 12> ground_sky_arr = makeRectangle(800, 50);
+    std::array<float, 12> left_right_arr = makeRectangle(50, 496);
+    
+    std::array<float, 6> sbob_arr = makeTriangle(64);
+    std::array<float, 24> spat_arr = makeConcave(64);
+    std::array<float, 12> sbox_arr = makeRectangle(200, 50);
 
-    Player sBob = {"sBob", 50, 100, 2, "triangle", 64};
-    Player sPat = {"sPat", 400, 100, 2, "2xtriangle", 64};
+    Player groundS = {"groundS", 400, 550+25, ground_sky_arr.data(), ground_sky_arr.size()/2, 2e9};
+    Player skyS = {"skyS", 400, 25, ground_sky_arr.data(), ground_sky_arr.size()/2, 2e9};
+    Player left = {"left", -25, 300, left_right_arr.data(), left_right_arr.size()/2, 2e9};
+    Player right = {"right", 825, 300, left_right_arr.data(), left_right_arr.size()/2, 2e9};
 
-    Player sBox = {"sBox", 200, 300, 4, "rectangle", 200, 50};
+    Player sBob = {"sBob", 50, 100, sbob_arr.data(), sbob_arr.size()/2, 2};
+    Player sPat = {"sPat", 400, 100, spat_arr.data(), spat_arr.size()/2, 2};
+    Player sBox = {"sBox", 200, 300, sbox_arr.data(), sbox_arr.size()/2, 4};
 
     std::vector<Player*> players = {&sBob, &sPat, &sBox, &groundS, &skyS, &left, &right};
     
@@ -79,18 +110,13 @@ int main()
             for (auto p : players)
                 p->updatePos();
 
-            
             for (auto p1 : players)
                 for (auto p2 : players)
                     if (p1 != p2)
-                    {
                         for (int i = 0; i < (p1->getNumVertices())/3; i++)
                             for (int j = 0; j < (p2->getNumVertices())/3; j++)
-                                Physics::checkOverlap(*p1, *p2,
-                                    (p1->getPoints()).data()+i*3,
-                                    (p2->getPoints()).data()+j*3,
-                                    e);
-                    }
+                                Physics::checkOverlap(*p1, *p2, (p1->getPoints()).data() + i * 3,
+                                    (p2->getPoints()).data() + j * 3, e);
         }
 
         sBob.draw(window);
