@@ -64,41 +64,13 @@ void Player::updatePos()
 
 void Player::draw(sf::RenderWindow& window, const sf::Color& color)
 {
-    sf::ConvexShape m_shape;
-    m_shape.setPointCount(m_points_world.size());
-    for (int i = 0; i < m_points_world.size(); i++)
-    {
-        Vector& point = m_points_world[i];
-        m_shape.setPoint(i, {point.x, point.y});
-    }
-
-    m_shape.setFillColor(color);
-    m_shape.setOutlineThickness(1.f);
-    m_shape.setOutlineColor(sf::Color(0, 0, 0));
-    window.draw(m_shape);
+    std::vector<sf::Vertex> vertex_array(m_points_world.size());
+    for (const auto& point : m_points_world)
+        vertex_array.push_back({{point.x, point.y}, color});
+    window.draw(vertex_array.data(), vertex_array.size(), sf::PrimitiveType::Triangles);
+ 
 }
 
-void Player::normToCentroid()
-{
-    float A = 0;
-    Vector CxCy = {0, 0};
-    for (int i = 0; i < m_points_local.size(); i++)
-    {
-        const Vector& point_i = m_points_local[i];
-        const Vector& point_i_p1 = (i == m_points_local.size() - 1)
-                                            ? m_points_local[0]
-                                            : m_points_local[i + 1];
-        A += point_i.x * point_i_p1.y - point_i_p1.x * point_i.y;
-
-        float temp_var = point_i.x * point_i_p1.y - point_i_p1.x * point_i.y;
-        CxCy += (point_i + point_i_p1) * temp_var;
-    }
-
-    A *= 0.5;
-    CxCy *= 1/(6 * A);
-    for (int i = 0; i < m_points_local.size(); i++)
-        m_points_local[i] = {m_points_local[i] - CxCy};
-}
 
 Player::Player(const Player &other)
 {

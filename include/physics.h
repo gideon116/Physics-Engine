@@ -17,6 +17,8 @@ namespace Physics
     void collidePlayers(
         Player& A, Player& B, const Vector& normal, Vector& contact, float& overlap, float e
     );
+
+    void checkOverlap(Player& A, Player& B, Vector* A_vertices_raw, Vector* B_vertices_raw, const float e);
 }
 
 #endif

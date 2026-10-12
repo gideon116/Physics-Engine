@@ -17,6 +17,31 @@ float Vector::magFromCart(float x_, float y_)
     return std::sqrt(std::pow(x_, 2) + std::pow(y_, 2));
 }
 
+Vector Vector::calcCentroid(Vector* vertices, const float num_vertices)
+{
+    float A = 0;
+    Vector CxCy = {0, 0};
+    for (int i = 0; i < num_vertices; i++)
+    {
+        const Vector& point_i = vertices[i];
+        const Vector& point_i_p1 = (i == num_vertices - 1)
+                                            ? vertices[0]
+                                            : vertices[i + 1];
+        A += point_i.x * point_i_p1.y - point_i_p1.x * point_i.y;
+
+        float temp_var = point_i.x * point_i_p1.y - point_i_p1.x * point_i.y;
+        CxCy += (point_i + point_i_p1) * temp_var;
+    }
+    A *= 0.5;
+    CxCy *= 1/(6 * A);
+    return CxCy;
+}
+
+float Vector::calcDistance(const Vector& point_1, const Vector& point_2)
+{
+    return std::pow(std::pow(point_2.x - point_1.x, 2) + std::pow(point_2.y - point_1.y, 2), 0.5);
+}
+
 float Vector::angleFromCart(float x_, float y_)
 {
     return std::atan2(y_, x_);

@@ -18,6 +18,10 @@ public:
 
     static float angleFromCart(float x_, float y_);
 
+    static Vector calcCentroid(Vector* vertices, const float num_vertices);
+
+    static float calcDistance(const Vector& point_1, const Vector& point_2);
+
     void cartUpdate(float x_, float y_);
 
     void polUpdate(float mag_, float angle_);
