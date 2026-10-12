@@ -63,9 +63,7 @@ namespace Physics
     void checkOverlap(Player& A, Player& B, const float e)
     {
         Vector normal = {0, 0};
-        Vector contact = {0, 0};
         float overlap = 1e9;
-        bool collide = false;
 
         const std::vector<Vector>& A_vertices = A.getPoints();
         const std::vector<Vector>& B_vertices = B.getPoints();
@@ -119,13 +117,13 @@ namespace Physics
         float d = Vector::dot((B.getPos() - A.getPos()), normal);
         if (d < 0)
             normal *= -1;
-        collide = true;
+
         float min_dist = 1e6;
+        Vector contact = {0, 0};
         getContactPoints(A_vertices, B_vertices, min_dist, contact);
         getContactPoints(B_vertices, A_vertices, min_dist, contact);
 
-        if (collide)
-            collidePlayers(A, B, normal, contact, overlap, e);
+        collidePlayers(A, B, normal, contact, overlap, e);
     }
 
     void collidePlayers(
@@ -162,5 +160,84 @@ namespace Physics
             A.pulse(impulse_norm * -1, contact);
             B.pulse(impulse_norm, contact);
         }
+    }
+
+
+
+
+    void checkOverlap(Player& A, Player& B, Vector* A_vertices_raw, Vector* B_vertices_raw, const float e)
+    {
+        Vector normal = {0, 0};
+        Vector contact = {0, 0};
+        float overlap = 1e9;
+        bool collide = false;
+
+        std::vector<Vector> A_vertices;
+        A_vertices.push_back(A_vertices_raw[0]);
+        A_vertices.push_back(A_vertices_raw[1]);
+        A_vertices.push_back(A_vertices_raw[2]);
+
+        std::vector<Vector> B_vertices;
+        B_vertices.push_back(B_vertices_raw[0]);
+        B_vertices.push_back(B_vertices_raw[1]);
+        B_vertices.push_back(B_vertices_raw[2]);
+
+        std::vector<Vector> axis_1 = getAxis(A_vertices);
+        std::vector<Vector> axis_2 = getAxis(B_vertices);
+
+        for (int i = 0; i < A_vertices.size(); i++)
+        {
+            std::array<float, 2> pa = project(axis_1[i], A_vertices);
+            std::array<float, 2> pb = project(axis_1[i], B_vertices);
+            if (pa[0] > pb[1] || pa[1] < pb[0])
+                // no overlap
+                return;
+            float top = std::min(pa[1], pb[1]);
+            float bottom = std::max(pa[0], pb[0]);
+            float curr_overlap = std::abs(top - bottom);
+            // containment
+            if ((pa[1] < pb[1] && pa[0] > pb[0]) || (pa[1] > pb[1] && pa[0] < pb[0]))
+                curr_overlap += std::min(std::abs(pa[0] - pb[0]), std::abs(pa[1] - pb[1]));
+
+            if (overlap > curr_overlap)
+            {
+                overlap = curr_overlap;
+                normal = axis_1[i];
+            }
+        }
+        
+        for (int i = 0; i < B_vertices.size(); i++)
+        {
+            std::array<float, 2> pa = project(axis_2[i], A_vertices);
+            std::array<float, 2> pb = project(axis_2[i], B_vertices);
+
+            if (pa[0] > pb[1] || pa[1] < pb[0])
+                // no overlap
+                return;
+
+            float top = std::min(pa[1], pb[1]);
+            float bottom = std::max(pa[0], pb[0]);
+            float curr_overlap = std::abs(top - bottom);
+
+            // containment
+            if ((pa[1] < pb[1] && pa[0] > pb[0]) || (pa[1] > pb[1] && pa[0] < pb[0]))
+                curr_overlap += std::min(std::abs(pa[0] - pb[0]), std::abs(pa[1] - pb[1]));
+
+            if (overlap > curr_overlap)
+            {
+                overlap = curr_overlap;
+                normal = axis_2[i];
+            }
+        }
+        
+        float d = Vector::dot((Vector::calcCentroid(B_vertices_raw, 3) - Vector::calcCentroid(A_vertices_raw, 3)), normal);
+        if (d < 0)
+            normal *= -1;
+
+        float min_dist = 1e6;
+        getContactPoints(A_vertices, B_vertices, min_dist, contact);
+        getContactPoints(B_vertices, A_vertices, min_dist, contact);
+
+        collidePlayers(A, B, normal, contact, overlap, e);
     }
 }

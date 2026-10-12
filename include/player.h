@@ -25,26 +25,76 @@ public:
 
         if (shape == "triangle")
         {
-            m_points_world.reserve(3);
-            m_points_local.reserve(3);
+            m_vertices = 3;
+            m_points_world.reserve(m_vertices);
+            m_points_local.reserve(m_vertices);
             m_points_local.push_back({0.f, 0.f});
             m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
             m_points_local.push_back({side1, 0.f});
-            m_I = m_mass * std::pow(side1, 2) / 12;
+
         }
         else if (shape == "rectangle")
         {
-            m_points_world.reserve(4);
-            m_points_local.reserve(4);
+            m_vertices = 6;
+            m_points_world.reserve(m_vertices);
+            m_points_local.reserve(m_vertices);
+
+            m_points_local.push_back({0.f, 0.f});
+            m_points_local.push_back({0.f, side2});
+            m_points_local.push_back({side1, side2});
+
+            m_points_local.push_back({side1, side2});
+            m_points_local.push_back({side1, 0.f});
+            m_points_local.push_back({0.f, 0.f});
+
+        }
+        else if (shape == "2xtriangle")
+        {
+            m_vertices = 12;
+            m_points_world.reserve(m_vertices);
+            m_points_local.reserve(m_vertices);
+
             m_points_local.push_back({0.f, 0.f});
             m_points_local.push_back({side1, 0.f});
-            m_points_local.push_back({side1, side2});
-            m_points_local.push_back({0.f, side2});
-            m_I = m_mass * (std::pow(side1, 2) + std::pow(side2, 2)) / 12;
+            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
+
+            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
+            m_points_local.push_back({side1, 0.f});
+            m_points_local.push_back({side1 + side1/2, side1/2 * std::sqrt(3.f)});
+
+            m_points_local.push_back({0.f, 0.f});
+            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
+            m_points_local.push_back({-side1/2, side1/2 * std::sqrt(3.f)});
+
+            m_points_local.push_back({side1/2, side1/2 * std::sqrt(3.f)});
+            m_points_local.push_back({side1 + side1/2, side1/2 * std::sqrt(3.f)});
+            m_points_local.push_back({side1, side1 * std::sqrt(3.f)});
         }
-        normToCentroid();
+
+        Vector CxCy = {0, 0};
+        for (int i = 0; i < m_vertices/3; i++)
+        {
+            Vector* ptr = m_points_local.data() + i * 3;
+            float mass_i = m_mass/(m_vertices/3);
+            CxCy += Vector::calcCentroid(ptr, 3) * mass_i;
+        }
+        CxCy *= (1/m_mass);
+        for (int i = 0; i < m_vertices/3; i++)
+        {
+            Vector* ptr = m_points_local.data() + i * 3;
+            float mass_i = m_mass/(m_vertices/3);
+            Vector centroid_i = Vector::calcCentroid(ptr, 3);
+
+            float inner = 0;
+            for (int j = 0; j < 3; j++)
+                inner += std::pow(Vector::calcDistance(ptr[(j+1) % 3], ptr[j]), 2);
+            m_I += (mass_i * inner / 36) + mass_i * std::pow((centroid_i - CxCy).mag, 2);
+        }
+        for (int i = 0; i < m_points_local.size(); i++)
+            m_points_local[i] = {m_points_local[i] - CxCy};
+
     };
-    
+
     void applyForce(const float angle, const float force);
     void pulse(const float angle, const float mag);
     void pulse(const Vector impulse_norm, const Vector contact_point);
@@ -59,14 +109,14 @@ public:
     const float getI() const { return m_I; }
     const float getW() const { return m_ang_vel; }
     const Vector& getVel() const { return m_vel; }
-    const float& getMass() const { return m_mass; }
-    const float& getDt() const { return m_dt; }
+    const float getMass() const { return m_mass; }
+    const float getDt() const { return m_dt; }
+    const int getNumVertices() const { return m_vertices; }
     const std::string* getName() const { return m_name; }
-    const std::vector<Vector>& getPoints() const { return m_points_world; }
+     std::vector<Vector>& getPoints() { return m_points_world; }
 
     void setPos(Vector new_pos) { m_pos = new_pos; updateWorldPoints(); };
     void draw(sf::RenderWindow& window, const sf::Color& color = sf::Color(255, 255, 0));
-    void normToCentroid();
 
     // rule of 5
     ~Player() { delete m_name; }
@@ -87,6 +137,7 @@ private:
     float m_mass = 2;
     float m_angle = 0;
     float m_I = 0;
+    int m_vertices = 1;
 
     std::vector<Vector> m_points_local;
     std::vector<Vector> m_points_world;

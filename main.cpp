@@ -28,7 +28,7 @@ int main()
     Player right = {"right", 825, 300, 2e9, "rectangle", 50, 496};
 
     Player sBob = {"sBob", 50, 100, 2, "triangle", 64};
-    Player sPat = {"sPat", 400, 100, 2, "triangle", 64};
+    Player sPat = {"sPat", 400, 100, 2, "2xtriangle", 64};
 
     Player sBox = {"sBox", 200, 300, 4, "rectangle", 200, 50};
 
@@ -79,10 +79,18 @@ int main()
             for (auto p : players)
                 p->updatePos();
 
+            
             for (auto p1 : players)
                 for (auto p2 : players)
                     if (p1 != p2)
-                        Physics::checkOverlap(*p1, *p2, e);
+                    {
+                        for (int i = 0; i < (p1->getNumVertices())/3; i++)
+                            for (int j = 0; j < (p2->getNumVertices())/3; j++)
+                                Physics::checkOverlap(*p1, *p2,
+                                    (p1->getPoints()).data()+i*3,
+                                    (p2->getPoints()).data()+j*3,
+                                    e);
+                    }
         }
 
         sBob.draw(window);
