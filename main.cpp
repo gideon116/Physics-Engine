@@ -5,7 +5,7 @@
 
 std::array<float, 12> makeRectangle(const float w, const float h)
 {
-    std::array<float, 12> array = {0.f, 0.f, 0.f, h, w, h, w, h, w, 0.f, 0.f, 0.f};
+    std::array<float, 12> array = {0.f, h, 0.f, 0.f, w, h, 0.f, 0.f, w, h, w, 0.f};
     return array;
 }
 
@@ -115,8 +115,7 @@ int main()
                     if (p1 != p2)
                         for (int i = 0; i < (p1->getNumVertices())/3; i++)
                             for (int j = 0; j < (p2->getNumVertices())/3; j++)
-                                Physics::checkOverlap(*p1, *p2, (p1->getPoints()).data() + i * 3,
-                                    (p2->getPoints()).data() + j * 3, e);
+                                Physics::checkOverlap(*p1, *p2, (p1->getPoints()) + i * 3, (p2->getPoints())+ j * 3, e);
         }
 
         sBob.draw(window);
