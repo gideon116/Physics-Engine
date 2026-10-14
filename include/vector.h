@@ -6,7 +6,8 @@
 class Vector
 {
 public:
-    Vector(float x, float y) : mag(magFromCart(x, y)), angle(angleFromCart(x, y)), x(x), y(y) { }
+    Vector() : mag(0),  angle(0), x(0), y(0) {}
+    Vector(float x, float y) : mag(magFromCart(x, y)), angle(angleFromCart(x, y)), x(x), y(y) {}
 
     Vector(float mag_, float angle_, float x_, float y_) : mag(mag_), angle(angle_), x(x_), y(y_) {}
 

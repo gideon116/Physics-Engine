@@ -41,13 +41,12 @@ void Player::updateVel() // this just applies acceleration
 
 void Player::updateWorldPoints()
 {
-    m_points_world.clear();
-    for (int i = 0; i < m_points_local.size(); i++)
+    for (int i = 0; i < m_num_vertices; i++)
     {
         Vector& point = m_points_local[i];
         float new_x = point.x * std::cos(m_angle) - point.y * std::sin(m_angle) + m_pos.x;
         float new_y = point.x * std::sin(m_angle) + point.y * std::cos(m_angle) + m_pos.y;
-        m_points_world.push_back({new_x, new_y});
+        m_points_world[i] = {new_x, new_y};
     }
 }
 
@@ -64,10 +63,10 @@ void Player::updatePos()
 
 void Player::draw(sf::RenderWindow& window, const sf::Color& color)
 {
-    std::vector<sf::Vertex> vertex_array(m_points_world.size());
-    for (const auto& point : m_points_world)
-        vertex_array.push_back({{point.x, point.y}, color});
-    window.draw(vertex_array.data(), vertex_array.size(), sf::PrimitiveType::Triangles);
+    m_vertex_array.clear();
+    for (int i = 0; i < m_num_vertices; i++)
+        m_vertex_array.push_back({{m_points_world[i].x, m_points_world[i].y}, color});
+    window.draw(m_vertex_array.data(), m_vertex_array.size(), sf::PrimitiveType::Triangles);
  
 }
 
