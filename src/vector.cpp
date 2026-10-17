@@ -63,6 +63,13 @@ void Vector::polUpdate(float mag_, float angle_)
     y = std::sin(angle) * mag;
 }
 
+Vector Vector::perp(const Vector& vec)
+{
+    float mag = magFromCart(-vec.y, vec.x);
+    float angle = angleFromCart(-vec.y, vec.x);
+
+    return Vector(mag, angle, std::cos(angle) * mag, std::sin(angle) * mag);
+}
 
 Vector& Vector::perp()
 {

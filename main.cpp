@@ -34,7 +34,6 @@ int main()
     int frame = 0;
     int delay = 0;
     float frictionCoe = 0.1;
-    float gravity = 100;
 
     sf::RenderWindow window(sf::VideoMode({800, 600}), "Physics yay");
     window.setFramerateLimit(60);
@@ -65,9 +64,9 @@ int main()
 
     std::vector<Player*> players = {&sBob, &sPat, &sBox, &groundS, &skyS, &left, &right};
     
-    sBob.applyForce(-3*Pi/2, gravity);
-    sPat.applyForce(-3*Pi/2, gravity);
-    sBox.applyForce(-3*Pi/2, gravity);
+    sBob.applyForce(-3*Pi/2, 100);
+    sPat.applyForce(-3*Pi/2, 100);
+    sBox.applyForce(-3*Pi/2, 200);
 
     while (window.isOpen())
     {

@@ -23,6 +23,8 @@ public:
 
     static float calcDistance(const Vector& point_1, const Vector& point_2);
 
+    static Vector perp(const Vector& vec);
+
     void cartUpdate(float x_, float y_);
 
     void polUpdate(float mag_, float angle_);
