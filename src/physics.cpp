@@ -58,80 +58,9 @@ namespace Physics
         return min_max;
     }
 
-    void checkOverlap(Player& A, Player& B, const float e)
-    {
-        Vector normal = {0, 0};
-        float overlap = 1e9;
-
-        const Vector* A_vertices = A.getPoints();
-        const Vector* B_vertices = B.getPoints();
-
-        // TODO: delete axis
-        Vector* axis_1 = new Vector[A.getNumVertices()];
-        Vector* axis_2 = new Vector[B.getNumVertices()];
-
-        getAxis(A_vertices, axis_1, A.getNumVertices());
-        getAxis(B_vertices, axis_2, B.getNumVertices());
-
-        for (int i = 0; i < A.getNumVertices(); i++)
-        {
-            std::array<float, 2> pa = project(axis_1[i], A_vertices, A.getNumVertices());
-            std::array<float, 2> pb = project(axis_1[i], B_vertices, B.getNumVertices());
-            if (pa[0] > pb[1] || pa[1] < pb[0])
-                // no overlap
-                return;
-            float top = std::min(pa[1], pb[1]);
-            float bottom = std::max(pa[0], pb[0]);
-            float curr_overlap = std::abs(top - bottom);
-            // containment
-            if ((pa[1] < pb[1] && pa[0] > pb[0]) || (pa[1] > pb[1] && pa[0] < pb[0]))
-                curr_overlap += std::min(std::abs(pa[0] - pb[0]), std::abs(pa[1] - pb[1]));
-
-            if (overlap > curr_overlap)
-            {
-                overlap = curr_overlap;
-                normal = axis_1[i];
-            }
-        }
-        for (int i = 0; i < A.getNumVertices(); i++)
-        {
-            std::array<float, 2> pa = project(axis_2[i], A_vertices, A.getNumVertices());
-            std::array<float, 2> pb = project(axis_2[i], B_vertices, B.getNumVertices());
-
-            if (pa[0] > pb[1] || pa[1] < pb[0])
-                // no overlap
-                return;
-
-            float top = std::min(pa[1], pb[1]);
-            float bottom = std::max(pa[0], pb[0]);
-            float curr_overlap = std::abs(top - bottom);
-
-            // containment
-            if ((pa[1] < pb[1] && pa[0] > pb[0]) || (pa[1] > pb[1] && pa[0] < pb[0]))
-                curr_overlap += std::min(std::abs(pa[0] - pb[0]), std::abs(pa[1] - pb[1]));
-
-            if (overlap > curr_overlap)
-            {
-                overlap = curr_overlap;
-                normal = axis_2[i];
-            }
-        }
-        float d = Vector::dot((B.getPos() - A.getPos()), normal);
-        if (d < 0)
-            normal *= -1;
-
-        float min_dist = 1e6;
-        Vector contact = {0, 0};
-        getContactPoints(A_vertices, B_vertices, A.getNumVertices(), B.getNumVertices(), min_dist, contact);
-        getContactPoints(B_vertices, A_vertices, B.getNumVertices(), A.getNumVertices(), min_dist, contact);
-
-        collidePlayers(A, B, normal, contact, overlap, e);
-        delete[] axis_1;
-        delete[] axis_2;
-    }
-
     void collidePlayers(
-        Player& A, Player& B, const Vector& normal, Vector& contact, float& overlap, float e
+        Player& A, Player& B, const Vector& normal, Vector& contact, float& overlap, const float e,
+        const float f_coefficient = 0.5
     )
     {
         float inv_A_mass = 1/A.getMass(), inv_B_mass = 1/B.getMass();
@@ -163,6 +92,17 @@ namespace Physics
 
             A.pulse(impulse_norm * -1, contact);
             B.pulse(impulse_norm, contact);
+            
+            Vector normal_perp = Vector::perp(normal);
+            float f_r_ac_prep_n = std::pow(Vector::dot(r_ac_prep, normal_perp), 2) / A.getI();
+            float f_r_bc_prep_n = std::pow(Vector::dot(r_bc_prep, normal_perp), 2) / B.getI();
+            float f_denom = Vector::dot(impulse_norm, impulse_norm * inv_comb_mass) + r_ac_prep_n + r_bc_prep_n;
+            float f_mag = Vector::dot((v_bp - v_ap), normal_perp);
+            float j_ts = -f_mag / f_denom;
+            float j_t = std::clamp(j_ts, -impulse * f_coefficient, impulse * f_coe);
+            Vector f_norm = j_t * impulse_norm;
+            A.pulse(f_norm * -1, contact);
+            B.pulse(f_norm, contact);
         }
     }
 
